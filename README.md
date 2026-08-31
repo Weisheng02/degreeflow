@@ -13,7 +13,8 @@ Campus Reserve is a full-stack portfolio project for booking campus rooms and eq
 - Approved-booking QR and check-in code.
 - Flyway database migration for H2 locally and PostgreSQL in Docker.
 - OpenAPI JSON and Swagger UI.
-- Spring Boot integration tests and a production React build.
+- Ten passing Spring Boot tests covering authentication, authorization, booking conflicts, approval, rejection and check-in failures.
+- A production React build deployed on Vercel.
 
 ## Deployment status
 
@@ -21,6 +22,16 @@ Campus Reserve is a full-stack portfolio project for booking campus rooms and eq
 - Spring Boot API: local only; an external Java host and PostgreSQL database are still required for the public login and booking workflow.
 
 Vercel is intentionally used for the React application. The Java API remains a separate deployable service because Java is not an official Vercel Functions runtime. The production deployment is prepared for a Render web service backed by a Neon PostgreSQL database; `render.yaml` defines the API service and prompts for the database connection string without committing it. Set `VITE_API_URL` in Vercel to the deployed API URL ending in `/api`, then redeploy the frontend.
+
+## Production deployment
+
+1. Provision a Neon PostgreSQL database in the Singapore region and copy its pooled connection string.
+2. Create a Render Blueprint from this repository. `render.yaml` creates the free Docker web service and prompts for `DATABASE_URL` without storing it in Git.
+3. Wait for `/actuator/health` on the Render service to return `{"status":"UP"}`. Flyway creates and seeds the schema during startup.
+4. Add `VITE_API_URL=https://<render-service>.onrender.com/api` to the Vercel production environment and redeploy the frontend.
+5. Verify both demo roles, booking creation, overlap rejection, admin approval and QR check-in against the public URLs.
+
+Free Render web services can cold-start after inactivity. The database is kept separately on Neon so it does not inherit Render's 30-day free-database expiry.
 
 ## Architecture
 
@@ -92,7 +103,7 @@ npm run lint
 npm run build
 ```
 
-CI repeats these checks and builds both Docker images.
+CI repeats these checks, runs the backend suite against PostgreSQL 17, and builds both Docker images.
 
 ## Engineering decisions
 
