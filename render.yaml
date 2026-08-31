@@ -16,23 +16,4 @@ services:
       - key: JAVA_TOOL_OPTIONS
         value: -XX:MaxRAMPercentage=70.0 -XX:+UseSerialGC
       - key: DATABASE_URL
-        fromDatabase:
-          name: campus-resource-booking-db
-          property: connectionString
-      - key: DATABASE_USERNAME
-        fromDatabase:
-          name: campus-resource-booking-db
-          property: user
-      - key: DATABASE_PASSWORD
-        fromDatabase:
-          name: campus-resource-booking-db
-          property: password
-
-databases:
-  - name: campus-resource-booking-db
-    plan: free
-    region: singapore
-    databaseName: campus_booking
-    user: campus_booking
-    postgresMajorVersion: "17"
-    ipAllowList: []
+        sync: false

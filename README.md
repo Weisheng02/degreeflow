@@ -20,7 +20,7 @@ Campus Reserve is a full-stack portfolio project for booking campus rooms and eq
 - Vercel frontend: <https://campus-resource-booking-eta.vercel.app>
 - Spring Boot API: local only; an external Java host and PostgreSQL database are still required for the public login and booking workflow.
 
-Vercel is intentionally used for the React application. The Java API remains a separate deployable service because Java is not an official Vercel Functions runtime. Set `VITE_API_URL` in Vercel to the deployed API URL ending in `/api`, then redeploy the frontend.
+Vercel is intentionally used for the React application. The Java API remains a separate deployable service because Java is not an official Vercel Functions runtime. The production deployment is prepared for a Render web service backed by a Neon PostgreSQL database; `render.yaml` defines the API service and prompts for the database connection string without committing it. Set `VITE_API_URL` in Vercel to the deployed API URL ending in `/api`, then redeploy the frontend.
 
 ## Architecture
 
