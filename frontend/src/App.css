@@ -32,6 +32,10 @@ textarea { min-height: 86px; padding: 12px 13px; resize: vertical; }
 .primary-button:disabled { opacity: 0.55; cursor: not-allowed; }
 .primary-button svg { width: 17px; }
 .security-note { margin: 20px 0 0; font-size: 0.72rem; line-height: 1.5; color: #808782; text-align: center; }
+.scan-prompt { margin: 20px 0 0; padding: 12px; display: flex; align-items: center; gap: 12px; border: 1px solid #c8d5c0; border-radius: 11px; background: #eef5e9; color: var(--green); }
+.scan-prompt svg { flex: 0 0 auto; padding: 3px; border-radius: 5px; background: white; }
+.scan-prompt span { display: flex; flex-direction: column; gap: 3px; font-size: 0.72rem; }
+.scan-prompt strong { font-size: 0.79rem; }
 .dashboard-shell { min-height: 100vh; background: #eef0e9; }
 .app-header { min-height: 76px; padding: 0 max(24px, calc((100vw - 1380px) / 2)); display: flex; align-items: center; justify-content: space-between; gap: 24px; background: var(--green); color: white; }
 .app-header .brand-lockup > span { background: var(--lime); color: var(--green); }
@@ -47,6 +51,13 @@ textarea { min-height: 86px; padding: 12px 13px; resize: vertical; }
 .dashboard-heading > div > p:last-child { margin: 0; color: var(--muted); }
 .secondary-button { min-height: 40px; padding: 0 14px; display: flex; align-items: center; gap: 7px; border-radius: 9px; background: white; border: 1px solid var(--line); font-weight: 750; }
 .secondary-button svg { width: 15px; }
+.scan-confirmation { margin-top: 24px; padding: 18px; display: grid; grid-template-columns: auto 1fr auto; align-items: center; gap: 16px; border: 1px solid #bdcfad; border-radius: 14px; background: #f6faef; box-shadow: var(--shadow); }
+.scan-confirmation-icon { padding: 7px; display: grid; place-items: center; border-radius: 9px; background: white; border: 1px solid var(--line); }
+.scan-confirmation h2 { margin: 5px 0 4px; font-size: 1.15rem; }
+.scan-confirmation p:last-child { margin: 0; color: var(--muted); font-size: 0.77rem; line-height: 1.5; }
+.scan-actions { display: flex; align-items: center; gap: 8px; }
+.scan-actions .primary-button { min-height: 40px; white-space: nowrap; }
+.scan-actions .text-button { min-height: 40px; padding: 0 10px; border: 0; background: transparent; color: var(--muted); cursor: pointer; }
 .notice { margin-top: 24px; padding: 13px 15px; display: flex; align-items: center; gap: 9px; border-radius: 10px; font-size: 0.84rem; font-weight: 650; }
 .notice svg { width: 18px; }
 .notice.error { background: #f9e3df; color: var(--danger); }
@@ -127,6 +138,8 @@ textarea { min-height: 86px; padding: 12px 13px; resize: vertical; }
   .resource-row { grid-template-columns: 42px 1fr 20px; }
   .capacity { display: none; }
   .booking-row { grid-template-columns: 46px 1fr; align-items: start; gap: 13px; }
+  .scan-confirmation { grid-template-columns: auto 1fr; align-items: start; }
+  .scan-actions { grid-column: 1 / -1; }
   .qr-block, .booking-actions { grid-column: 2; }
   .qr-block { justify-content: flex-start; }
 }

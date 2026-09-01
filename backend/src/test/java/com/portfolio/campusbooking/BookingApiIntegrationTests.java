@@ -50,6 +50,16 @@ class BookingApiIntegrationTests {
     }
 
     @Test
+    void authenticationResponseContainsOnlyApplicationRoles() throws Exception {
+        mockMvc.perform(get("/api/auth/me")
+                        .with(httpBasic("student@campus.local", "Student123!")))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.email").value("student@campus.local"))
+                .andExpect(jsonPath("$.roles.length()").value(1))
+                .andExpect(jsonPath("$.roles[0]").value("STUDENT"));
+    }
+
+    @Test
     void bookingEndpointsRequireAuthentication() throws Exception {
         long resourceId = resourceRepository.findByActiveTrueOrderByNameAsc().getFirst().getId();
 
@@ -135,6 +145,37 @@ class BookingApiIntegrationTests {
                         .with(httpBasic("admin@campus.local", "Admin123!")))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.status").value("REJECTED"));
+    }
+
+    @Test
+    void ownerCanCancelAndCancelledSlotCanBeBookedAgain() throws Exception {
+        long resourceId = resourceRepository.findByActiveTrueOrderByNameAsc().getFirst().getId();
+        long bookingId = createBooking("student@campus.local", "Student123!", resourceId, 17, 18,
+                "Booking to cancel");
+
+        mockMvc.perform(patch("/api/bookings/{id}/cancel", bookingId)
+                        .with(httpBasic("student@campus.local", "Student123!")))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.status").value("CANCELLED"));
+
+        mockMvc.perform(post("/api/bookings")
+                        .with(httpBasic("student@campus.local", "Student123!"))
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(bookingPayload(resourceId, 17, 18, "Replacement booking")))
+                .andExpect(status().isCreated())
+                .andExpect(jsonPath("$.status").value("PENDING"));
+    }
+
+    @Test
+    void studentCannotCancelAnotherOwnersBooking() throws Exception {
+        long resourceId = resourceRepository.findByActiveTrueOrderByNameAsc().getFirst().getId();
+        long bookingId = createBooking("admin@campus.local", "Admin123!", resourceId, 19, 20,
+                "Admin-owned cancellation guard");
+
+        mockMvc.perform(patch("/api/bookings/{id}/cancel", bookingId)
+                        .with(httpBasic("student@campus.local", "Student123!")))
+                .andExpect(status().isForbidden())
+                .andExpect(jsonPath("$.code").value("FORBIDDEN"));
     }
 
     @Test

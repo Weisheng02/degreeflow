@@ -33,6 +33,12 @@ jobs:
       - name: Lint and build
         working-directory: frontend
         run: npm run lint && npm run build
+      - name: Install Playwright browser
+        working-directory: frontend
+        run: npx playwright install --with-deps chromium
+      - name: Test QR check-in workflow
+        working-directory: frontend
+        run: npm run test:e2e
 
   postgres-integration:
     runs-on: ubuntu-latest

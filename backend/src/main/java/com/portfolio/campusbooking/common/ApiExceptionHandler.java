@@ -5,6 +5,7 @@ import java.util.LinkedHashMap;
 import java.util.Map;
 
 import org.springframework.http.HttpStatus;
+import org.springframework.orm.ObjectOptimisticLockingFailureException;
 import org.springframework.security.access.AccessDeniedException;
 import org.springframework.web.bind.MethodArgumentNotValidException;
 import org.springframework.web.bind.annotation.ExceptionHandler;
@@ -24,6 +25,12 @@ public class ApiExceptionHandler {
     @ResponseStatus(HttpStatus.CONFLICT)
     ApiError conflict(ConflictException exception) {
         return error("CONFLICT", exception.getMessage());
+    }
+
+    @ExceptionHandler(ObjectOptimisticLockingFailureException.class)
+    @ResponseStatus(HttpStatus.CONFLICT)
+    ApiError concurrentUpdate(ObjectOptimisticLockingFailureException exception) {
+        return error("CONFLICT", "This booking was changed by another request. Refresh and try again.");
     }
 
     @ExceptionHandler({IllegalArgumentException.class, IllegalStateException.class})

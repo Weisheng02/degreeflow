@@ -14,7 +14,9 @@ public class AuthController {
     @GetMapping("/me")
     AuthenticatedUser me(Authentication authentication) {
         List<String> roles = authentication.getAuthorities().stream()
-                .map(authority -> authority.getAuthority().replace("ROLE_", ""))
+                .map(authority -> authority.getAuthority())
+                .filter(authority -> authority.startsWith("ROLE_"))
+                .map(authority -> authority.substring("ROLE_".length()))
                 .toList();
         return new AuthenticatedUser(authentication.getName(), roles);
     }

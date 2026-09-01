@@ -15,5 +15,11 @@ services:
         value: https://campus-resource-booking-eta.vercel.app
       - key: JAVA_TOOL_OPTIONS
         value: -XX:MaxRAMPercentage=70.0 -XX:+UseSerialGC
-      - key: DATABASE_URL
+      - key: PGHOST
+        sync: false
+      - key: PGDATABASE
+        sync: false
+      - key: PGUSER
+        sync: false
+      - key: PGPASSWORD
         sync: false

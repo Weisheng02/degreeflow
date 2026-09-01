@@ -21,6 +21,8 @@ import {
 } from 'lucide-react'
 import { QRCodeSVG } from 'qrcode.react'
 import { api } from './api'
+import { createCheckInUrl, readCheckInIntent, removeCheckInIntentFromUrl } from './checkIn'
+import type { CheckInIntent } from './checkIn'
 import type { AuthenticatedUser, Booking, CampusResource, Credentials } from './types'
 import './App.css'
 
@@ -41,7 +43,7 @@ function localDateTime(hoursAhead: number) {
   return new Date(date.getTime() - offset * 60 * 1000).toISOString().slice(0, 16)
 }
 
-function LoginScreen({ onAuthenticated }: { onAuthenticated: (session: Session) => void }) {
+function LoginScreen({ onAuthenticated, checkInIntent }: { onAuthenticated: (session: Session) => void; checkInIntent: CheckInIntent | null }) {
   const [credentials, setCredentials] = useState<Credentials>(demoAccounts.student)
   const [error, setError] = useState('')
   const [loading, setLoading] = useState(false)
@@ -82,6 +84,7 @@ function LoginScreen({ onAuthenticated }: { onAuthenticated: (session: Session) 
         <p className="eyebrow">Demo access</p>
         <h2 id="login-title">Sign in to the workspace</h2>
         <p className="muted">Choose a demo role or enter the supplied local credentials.</p>
+        {checkInIntent && <div className="scan-prompt"><QRCodeSVG value={window.location.href} size={36} /><span><strong>Check-in link detected</strong>Sign in as the booking owner to continue.</span></div>}
         <div className="account-switcher" aria-label="Demo account">
           <button type="button" className={credentials.email === demoAccounts.student.email ? 'active' : ''} onClick={() => setCredentials(demoAccounts.student)}><Users /> Student</button>
           <button type="button" className={credentials.email === demoAccounts.admin.email ? 'active' : ''} onClick={() => setCredentials(demoAccounts.admin)}><ShieldCheck /> Admin</button>
@@ -98,7 +101,7 @@ function LoginScreen({ onAuthenticated }: { onAuthenticated: (session: Session) 
   )
 }
 
-function Dashboard({ session, onLogout }: { session: Session; onLogout: () => void }) {
+function Dashboard({ session, onLogout, checkInIntent, onClearCheckInIntent }: { session: Session; onLogout: () => void; checkInIntent: CheckInIntent | null; onClearCheckInIntent: () => void }) {
   const [resources, setResources] = useState<CampusResource[]>([])
   const [bookings, setBookings] = useState<Booking[]>([])
   const [loading, setLoading] = useState(true)
@@ -169,6 +172,20 @@ function Dashboard({ session, onLogout }: { session: Session; onLogout: () => vo
     }
   }
 
+  async function confirmScannedCheckIn() {
+    if (!checkInIntent) return
+    setError('')
+    setNotice('')
+    try {
+      await api.checkIn(session.credentials, checkInIntent.bookingId, checkInIntent.code)
+      onClearCheckInIntent()
+      setNotice('QR check-in recorded.')
+      await loadData()
+    } catch (requestError) {
+      setError(requestError instanceof Error ? requestError.message : 'Unable to check in')
+    }
+  }
+
   return (
     <div className="dashboard-shell">
       <header className="app-header">
@@ -180,6 +197,7 @@ function Dashboard({ session, onLogout }: { session: Session; onLogout: () => vo
           <div><p className="eyebrow">Resource operations</p><h1>{isAdmin ? 'Approval workspace' : 'Find your next space.'}</h1><p>{isAdmin ? 'Review campus demand and keep shared resources moving.' : 'Reserve a room or equipment in one conflict-safe workflow.'}</p></div>
           <button className="secondary-button" type="button" onClick={() => void loadData()}><RefreshCw /> Refresh</button>
         </section>
+        {checkInIntent && <section className="scan-confirmation" aria-labelledby="scan-title"><div className="scan-confirmation-icon"><QRCodeSVG value={window.location.href} size={46} /></div><div><p className="eyebrow">Scanned check-in</p><h2 id="scan-title">Confirm booking #{checkInIntent.bookingId}</h2><p>The QR code has been verified as a valid link. Your account and booking status will still be checked by the server.</p></div><div className="scan-actions"><button className="primary-button" type="button" onClick={() => void confirmScannedCheckIn()}><Check /> Confirm check-in</button><button className="text-button" type="button" onClick={onClearCheckInIntent}>Cancel</button></div></section>}
         {(error || notice) && <div className={`notice ${error ? 'error' : 'success'}`} role="status">{error ? <X /> : <CheckCircle2 />} {error || notice}</div>}
         <section className="stat-grid" aria-label="Booking summary">
           <article><DoorOpen /><div><strong>{stats.resources}</strong><span>Active resources</span></div></article>
@@ -215,7 +233,7 @@ function Dashboard({ session, onLogout }: { session: Session; onLogout: () => vo
             <article className="booking-row" key={booking.id}>
               <div className="booking-date"><strong>{new Date(booking.startTime).toLocaleDateString('en-MY', { day: '2-digit' })}</strong><span>{new Date(booking.startTime).toLocaleDateString('en-MY', { month: 'short' })}</span></div>
               <div className="booking-main"><div className="booking-title-row"><h3>{booking.resourceName}</h3><span className={`status status-${booking.status.toLowerCase()}`}>{booking.status.replace('_', ' ')}</span></div><p>{booking.purpose}</p><span className="booking-meta"><Clock3 /> {new Date(booking.startTime).toLocaleTimeString('en-MY', { hour: '2-digit', minute: '2-digit' })} – {new Date(booking.endTime).toLocaleTimeString('en-MY', { hour: '2-digit', minute: '2-digit' })}{isAdmin && <> · {booking.bookedBy}</>}</span></div>
-              {booking.status === 'APPROVED' && <div className="qr-block" title={`Check-in code ${booking.checkInCode}`}><QRCodeSVG value={`campus-reserve://booking/${booking.id}?code=${booking.checkInCode}`} size={56} /><span>{booking.checkInCode}</span></div>}
+              {booking.status === 'APPROVED' && <div className="qr-block" title={`Scan to check in with code ${booking.checkInCode}`}><QRCodeSVG value={createCheckInUrl(booking.id, booking.checkInCode, window.location.href)} size={56} /><span>{booking.checkInCode}</span></div>}
               <div className="booking-actions">
                 {isAdmin && booking.status === 'PENDING' && <><button type="button" className="approve" onClick={() => void runAction(() => api.approve(session.credentials, booking.id), 'Booking approved.')}><Check /> Approve</button><button type="button" className="reject" onClick={() => void runAction(() => api.reject(session.credentials, booking.id), 'Booking rejected.')}><X /> Reject</button></>}
                 {booking.status === 'APPROVED' && <button type="button" className="approve" onClick={() => void runAction(() => api.checkIn(session.credentials, booking.id, booking.checkInCode), 'Check-in recorded.')}><Check /> Check in</button>}
@@ -231,5 +249,14 @@ function Dashboard({ session, onLogout }: { session: Session; onLogout: () => vo
 
 export default function App() {
   const [session, setSession] = useState<Session | null>(null)
-  return session ? <Dashboard session={session} onLogout={() => setSession(null)} /> : <LoginScreen onAuthenticated={setSession} />
+  const [checkInIntent, setCheckInIntent] = useState<CheckInIntent | null>(() => readCheckInIntent(window.location.href))
+
+  function clearCheckInIntent() {
+    window.history.replaceState({}, '', removeCheckInIntentFromUrl(window.location.href))
+    setCheckInIntent(null)
+  }
+
+  return session
+    ? <Dashboard session={session} onLogout={() => setSession(null)} checkInIntent={checkInIntent} onClearCheckInIntent={clearCheckInIntent} />
+    : <LoginScreen onAuthenticated={setSession} checkInIntent={checkInIntent} />
 }
