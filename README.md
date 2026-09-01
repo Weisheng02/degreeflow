@@ -14,7 +14,7 @@ Campus Reserve is an individual full-stack portfolio project for booking campus 
 - Flyway database migration for H2 locally and PostgreSQL in Docker.
 - OpenAPI JSON and Swagger UI.
 - Thirteen passing Spring Boot tests covering authentication, authorization, booking conflicts, approval, rejection, cancellation and check-in failures.
-- A Playwright browser test covering the scanned QR link, login and authenticated confirmation flow.
+- A Playwright QR workflow test running in desktop and mobile Chromium, covering the scanned link, login and authenticated confirmation flow.
 - A production React build deployed on Vercel.
 
 ## Deployment status
