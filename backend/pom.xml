@@ -9,10 +9,10 @@
 		<relativePath/> <!-- lookup parent from repository -->
 	</parent>
 	<groupId>com.portfolio</groupId>
-	<artifactId>campus-booking-api</artifactId>
+	<artifactId>degreeflow-api</artifactId>
 	<version>0.0.1-SNAPSHOT</version>
-	<name>CampusBookingApi</name>
-	<description/>
+	<name>DegreeFlowApi</name>
+	<description>Degree study and portfolio planning API</description>
 	<url/>
 	<licenses>
 		<license/>

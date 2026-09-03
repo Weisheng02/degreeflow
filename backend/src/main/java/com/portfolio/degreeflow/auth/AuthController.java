@@ -1,0 +1,26 @@
+package com.portfolio.degreeflow.auth;
+
+import java.util.List;
+
+import org.springframework.security.core.Authentication;
+import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.RestController;
+
+@RestController
+@RequestMapping("/api/auth")
+public class AuthController {
+
+    @GetMapping("/me")
+    AuthenticatedUser me(Authentication authentication) {
+        List<String> roles = authentication.getAuthorities().stream()
+                .map(authority -> authority.getAuthority())
+                .filter(authority -> authority.startsWith("ROLE_"))
+                .map(authority -> authority.substring("ROLE_".length()))
+                .toList();
+        return new AuthenticatedUser(authentication.getName(), roles);
+    }
+
+    public record AuthenticatedUser(String email, List<String> roles) {
+    }
+}

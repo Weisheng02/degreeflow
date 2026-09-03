@@ -2,15 +2,15 @@ services:
   postgres:
     image: postgres:17-alpine
     environment:
-      POSTGRES_DB: campus_booking
-      POSTGRES_USER: campus
-      POSTGRES_PASSWORD: campus
+      POSTGRES_DB: degreeflow
+      POSTGRES_USER: degreeflow
+      POSTGRES_PASSWORD: degreeflow
     ports:
       - "5432:5432"
     volumes:
-      - campus_postgres:/var/lib/postgresql/data
+      - degreeflow_postgres:/var/lib/postgresql/data
     healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U campus -d campus_booking"]
+      test: ["CMD-SHELL", "pg_isready -U degreeflow -d degreeflow"]
       interval: 5s
       timeout: 3s
       retries: 12
@@ -19,9 +19,9 @@ services:
     build: ./backend
     environment:
       SPRING_PROFILES_ACTIVE: prod
-      DATABASE_URL: jdbc:postgresql://postgres:5432/campus_booking
-      DATABASE_USERNAME: campus
-      DATABASE_PASSWORD: campus
+      DATABASE_URL: jdbc:postgresql://postgres:5432/degreeflow
+      DATABASE_USERNAME: degreeflow
+      DATABASE_PASSWORD: degreeflow
     ports:
       - "8080:8080"
     depends_on:
@@ -36,4 +36,4 @@ services:
       - backend
 
 volumes:
-  campus_postgres:
+  degreeflow_postgres:

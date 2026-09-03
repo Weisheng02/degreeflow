@@ -1,72 +1,90 @@
-# Campus Reserve
+# DegreeFlow
 
-Campus Reserve is an individual full-stack portfolio project for booking campus rooms and equipment. It demonstrates a complete vertical slice rather than a static UI: authenticated users can browse resources, submit bookings, receive conflict feedback, complete an approval workflow, and scan an approved booking's QR link to check in.
+[![DegreeFlow CI](https://github.com/Weisheng02/degreeflow/actions/workflows/ci.yml/badge.svg)](https://github.com/Weisheng02/degreeflow/actions/workflows/ci.yml)
 
-## What works
+DegreeFlow is an individual, non-AI full-stack software engineering project for organising a student's degree work, FYP preparation and portfolio evidence. A student manages subjects and actionable goals; a reviewer sees only project or portfolio items that the student explicitly shares.
 
-- Student and administrator demo roles protected by Spring Security.
-- Active room and equipment catalogue.
-- Future-dated booking requests with validation.
-- Transactional overlap prevention for each resource.
-- Admin approval and rejection.
-- Owner/admin cancellation.
-- Approved-booking QR links that open the web app, preserve the check-in intent through login, and require an authenticated confirmation.
-- Flyway database migration for H2 locally and PostgreSQL in Docker.
-- OpenAPI JSON and Swagger UI.
-- Thirteen passing Spring Boot tests covering authentication, authorization, booking conflicts, approval, rejection, cancellation and check-in failures.
-- A Playwright QR workflow test running in desktop and mobile Chromium, covering the scanned link, login and authenticated confirmation flow.
-- A production React build deployed on Vercel.
+## Product scope
 
-## Deployment status
+- Create, edit and archive subjects, including code, semester and colour.
+- Plan assignments, study sessions, project milestones and portfolio work.
+- Track priority, planned start, due date, notes and completion time.
+- Move goals through controlled `TODO`, `IN_PROGRESS`, `COMPLETED` and `CANCELLED` states.
+- Reject overlapping active study sessions inside a database transaction.
+- Attach an HTTP/HTTPS evidence link to project and portfolio goals.
+- Keep goals private by default and expose only explicitly shared evidence to the reviewer.
+- Summarise active subjects, due-this-week work, in-progress and completed goals, portfolio-ready items, upcoming deadlines and overdue work.
 
-- Vercel frontend: <https://campus-resource-booking-eta.vercel.app>
-- Spring Boot API: local only; an external Java host and PostgreSQL database are still required for the public login and booking workflow.
+## Demo accounts
 
-Vercel is intentionally used for the React application. The Java API remains a separate deployable service because Java is not an official Vercel Functions runtime. The production deployment is prepared for a Render web service backed by a Neon PostgreSQL database; `render.yaml` defines the API service and prompts separately for the PostgreSQL host, database, user and password without committing them. Set `VITE_API_URL` in Vercel to the deployed API URL ending in `/api`, then redeploy the frontend.
+| Role | Email | Password | Access |
+| --- | --- | --- | --- |
+| Student | `student@degreeflow.local` | `Student123!` | Own subjects and goals |
+| Reviewer | `reviewer@degreeflow.local` | `Reviewer123!` | Shared evidence, read-only |
 
-## Production deployment
-
-1. Provision a Neon PostgreSQL database in the Singapore region and copy its `PGHOST`, `PGDATABASE`, `PGUSER` and `PGPASSWORD` values.
-2. Create a Render Blueprint from this repository. `render.yaml` creates the free Docker web service and prompts for those database values without storing them in Git. Credentials are passed separately from the JDBC URL so startup logs cannot expose them.
-3. Wait for `/actuator/health` on the Render service to return `{"status":"UP"}`. Flyway creates and seeds the schema during startup.
-4. Add `VITE_API_URL=https://<render-service>.onrender.com/api` to the Vercel production environment and redeploy the frontend.
-5. Verify both demo roles, booking creation, overlap rejection, admin approval and QR check-in against the public URLs.
-
-Free Render web services can cold-start after inactivity. The database is kept separately on Neon so it does not inherit Render's 30-day free-database expiry.
+The accounts are fixed demonstration identities. HTTP Basic credentials are kept only in React memory and must be used over HTTPS.
 
 ## Architecture
 
 ```mermaid
 flowchart LR
-    Browser[React + TypeScript] -->|REST + Basic Auth| API[Spring Boot API]
+    UI[React + TypeScript] -->|REST + HTTP Basic| API[Spring Boot]
     API --> Security[Spring Security RBAC]
-    API --> Service[Transactional booking service]
-    Service --> DB[(PostgreSQL)]
+    API --> Subject[Subject service]
+    API --> Goal[Transactional goal service]
+    Goal --> Lock[Student workspace lock]
+    Subject --> DB[(PostgreSQL / H2)]
+    Goal --> DB
     Flyway[Flyway migrations] --> DB
 ```
 
 ```mermaid
 stateDiagram-v2
-    [*] --> PENDING
-    PENDING --> APPROVED
-    PENDING --> REJECTED
-    PENDING --> CANCELLED
-    APPROVED --> CHECKED_IN
-    APPROVED --> CANCELLED
+    [*] --> TODO
+    TODO --> IN_PROGRESS
+    TODO --> COMPLETED
+    TODO --> CANCELLED
+    IN_PROGRESS --> COMPLETED
+    IN_PROGRESS --> CANCELLED
+    COMPLETED --> [*]
+    CANCELLED --> [*]
 ```
 
-## Run locally without Docker
+The React client calls `/api/auth/me`, `/api/subjects` and `/api/goals`. Controllers enforce role boundaries, services enforce ownership and domain rules, and repositories persist the result. Reviewer requests are filtered to explicitly shared evidence and reviewer write routes are denied by Spring Security.
+
+## Data integrity and security
+
+- Every subject and goal carries an owner email. Owned lookups return `404` for another student's data rather than revealing its existence.
+- Subject and goal entities use `@Version` optimistic locking.
+- A study-session create or update locks the student's workspace row before checking active sessions, preventing concurrent requests from both passing the overlap check.
+- Only `TODO` and `IN_PROGRESS` sessions block a time range; completed and cancelled sessions remain as history.
+- Completed or cancelled goals cannot be edited or moved to another state.
+- Archived subjects remain linked to historical goals but cannot receive new goals.
+- Evidence URLs accept only valid `http` or `https` URLs. Only project milestone and portfolio goals can be reviewer-visible.
+- Validation and domain failures use a consistent JSON error response.
+
+## Database migration
+
+`V1__create_booking_schema.sql` is an immutable historical migration because it already ran in Neon. It is not application functionality. `V2__create_degree_flow_schema.sql` creates the DegreeFlow tables, and `V3__remove_legacy_booking_schema.sql` removes the two obsolete tables in dependency order. The DegreeFlow application never reads or writes the historical schema.
+
+Current application tables:
+
+- `student_workspace`
+- `study_subject`
+- `degree_goal`
+
+## Run locally
 
 Requirements: Java 21 and Node.js 22.
 
-Terminal 1:
+Backend:
 
 ```bash
 cd backend
 ./mvnw spring-boot:run
 ```
 
-Terminal 2:
+Frontend, in a second terminal:
 
 ```bash
 cd frontend
@@ -74,63 +92,63 @@ npm ci
 npm run dev
 ```
 
-Open `http://localhost:5173`.
+Open `http://localhost:5173`. The default profile uses an in-memory H2 database in PostgreSQL compatibility mode. Swagger UI is available at `http://localhost:8080/swagger-ui.html`.
 
-Demo users:
-
-| Role | Email | Password |
-| --- | --- | --- |
-| Student | `student@campus.local` | `Student123!` |
-| Admin | `admin@campus.local` | `Admin123!` |
-
-The local backend uses an in-memory H2 database in PostgreSQL compatibility mode. Swagger UI is available at `http://localhost:8080/swagger-ui.html`.
-
-## Run the PostgreSQL stack
+## Run with PostgreSQL and Docker
 
 ```bash
 docker compose up --build
 ```
 
-Then open `http://localhost:5173`. The database is persisted in the `campus_postgres` Docker volume.
+Open `http://localhost:5173`. The local database uses the `degreeflow_postgres` volume.
 
 ## Verify
 
 ```bash
 cd backend
-./mvnw test
+./mvnw --batch-mode clean verify
 
 cd ../frontend
+npm ci
 npm run lint
 npm run build
 npm run test:e2e
 ```
 
-CI repeats these checks, runs the backend suite against PostgreSQL 17, and builds both Docker images.
+The backend suite covers authentication, subject lifecycle, owner isolation, reviewer restrictions, goal validation and workflow, terminal-state protection, archived subjects, evidence privacy and study-session overlap. Playwright exercises the student workflow and read-only reviewer workflow in desktop Chromium and a Pixel 7 viewport. CI repeats these checks against H2 and PostgreSQL 17, then builds both application containers.
 
-## Engineering decisions
+## Deployment
 
-- A pessimistic lock serializes competing requests for the same resource before the overlap check. `@Version` provides optimistic protection when an existing booking changes state.
-- Database structure is owned by a Flyway migration; Hibernate validates rather than silently changing production schema.
-- Open EntityManager in View is disabled. Repository entity graphs load the resource information required by API responses.
-- Credentials remain in React memory. HTTP Basic is intentionally limited to the local vertical slice and must run behind HTTPS. Before a public production launch, replace demo users with database-backed identities and secure HttpOnly session cookies or an external identity provider.
-- QR codes encode an HTTPS link containing only a booking identifier and one-time-style check-in code. Scanning does not bypass authentication or owner/admin authorization, and check-in requires explicit confirmation.
+- Frontend target: Vercel
+- API target: Render Docker web service
+- Database target: Neon PostgreSQL
+- Render health endpoint: `/actuator/health`
+
+`render.yaml` keeps database credentials as unsynchronised environment variables. The Vercel `VITE_API_URL` must point to the Render URL ending in `/api`. Public URLs and a dated online regression result will be recorded after this DegreeFlow revision is deployed and verified.
 
 ## Evidence and ownership
 
 - Project type: individual portfolio build, not team coursework.
-- Engineering evidence: commit history, backend integration tests, a browser-level QR workflow test, Flyway migration, CI workflow and reproducible deployment manifests.
-- Interface evidence: [QR login handoff](docs/screenshots/qr-login.png) and [authenticated QR confirmation](docs/screenshots/qr-confirmation.png), captured from the deterministic browser test fixture.
-- Requirements coverage and known gaps: [`docs/requirements-traceability.md`](docs/requirements-traceability.md).
-- Current limitation: no stakeholder interview or usability-test result has been claimed. That evidence must come from real sessions and should be added only after it exists.
+- Engineering evidence: Git history, Spring integration tests, Playwright workflows, Flyway migrations, CI and deployment manifests.
+- Requirement mapping: [`docs/requirements-traceability.md`](docs/requirements-traceability.md).
+- No stakeholder interview, usability score, internship result or employer feedback is claimed. Those results should be added only after real sessions occur.
 
-## Next milestones
+## Current limitations
 
-1. Replace in-memory users with database-backed accounts and password reset.
-2. Expand Playwright coverage to the complete student booking and admin approval workflow.
-3. Add email notifications and expiring check-in codes.
-4. Run stakeholder usability sessions and record task-completion evidence.
-5. Publish a live demo with seeded, non-personal data.
+- Demo users are configured in memory; production-grade registration, password reset and persistent sessions are outside this portfolio slice.
+- One demo student workspace is exposed to the reviewer. Multi-student reviewer selection is not implemented.
+- Evidence is stored as a URL; file upload and object storage are not implemented.
+- Notifications are in-app feedback, not email or push notifications.
+- The initial version is online-first and does not provide offline synchronisation.
+
+## Optional future enhancements
+
+1. Database-backed identity and secure HttpOnly sessions.
+2. Separate semester entities with GPA or credit tracking.
+3. Calendar export and reminder notifications.
+4. Evidence file upload with object storage.
+5. Real stakeholder usability sessions and documented task-completion results.
 
 ## Scope boundary
 
-This project contains no AI or machine learning. It exists to demonstrate software engineering fundamentals: API design, authorization, data integrity, responsive UI, migrations, automated tests and deployment packaging.
+DegreeFlow contains no artificial intelligence or machine learning. It demonstrates software engineering fundamentals: requirements mapping, REST API design, authorisation, ownership, validation, transactional concurrency control, optimistic locking, responsive UI, migration safety, automated testing and deployment.
